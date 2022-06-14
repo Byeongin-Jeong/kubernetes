@@ -1,0 +1,158 @@
+# Create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elk
+---
+# Create persistentvolume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: elk
+  name: elasticsearch-pv
+  labels:
+    name: elasticsearch
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    namespace: ocean
+    name: elasticsearch-persistent-storage-elasticsearch-node-0
+  persistentVolumeReclaimPolicy: Delete
+  hostPath:
+    path: /data/es
+    type: DirectoryOrCreate
+---
+# Create Configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: elk
+  name: elasticsearch-config
+  labels:
+    app: elasticsearch
+    #role: data
+data:
+  elasticsearch.yml: |-
+    cluster.name: ${CLUSTER_NAME}
+    network.host: 0.0.0.0
+    
+    #node.name: ${NODE_NAME}
+    #discovery.seed_hosts: ${NODE_LIST}
+    #cluster.initial_master_nodes: ${MASTER_NODES}
+    #node:
+    #  master: false
+    #  data: true
+    #  ingest: false
+    #xpack.security.enabled: true
+    #xpack.monitoring.collection.enabled: true
+---
+# Create StatefulSet and Pod
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: elk
+  name: elasticsearch-node
+  labels:
+    app: elasticsearch
+    #role: data
+spec:
+  serviceName: "elasticsearch"
+  selector:
+    matchLabels:
+      app: elasticsearch
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        #image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+        image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.8.23
+        env:
+        - name: CLUSTER_NAME
+          value: ocean
+        #- name: discovery.seed_hosts
+        #  value: "elasticsearch"
+        - name: discovery.type
+          value: single-node
+        - name: "ES_JAVA_OPTS"
+          value: "-Xms300m -Xmx300m"
+        ports:
+        - name: rest
+          containerPort: 9200
+        - name: transport
+          containerPort: 9300
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          readOnly: true
+          subPath: elasticsearch.yml
+        - name: elasticsearch-persistent-storage
+          mountPath: /usr/share/elasticsearch/data
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: elasticsearch-persistent-storage
+          mountPath: /usr/share/elasticsearch/data
+      volumes:
+      - name: config
+        configMap:
+          name: elasticsearch-config
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-persistent-storage
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "gp2"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
+---
+# Create Service
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: elk
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None
+  ports:
+  - name: rest
+    port: 9200
+  - name: transport
+    port: 9300
+  selector:
+    app: elasticsearch
+---
+# Create Service
+kind: Service
+apiVersion: v1
+metadata:
+  namespace: elk
+  name: elasticsearch-nodeport
+  labels:
+    app: elasticsearch
+spec:
+  type: NodePort
+  ports:
+    - nodePort: 30920
+      port: 9200
+      targetPort: 9200
+      protocol: TCP
+  selector:
+    app: elasticsearch 
