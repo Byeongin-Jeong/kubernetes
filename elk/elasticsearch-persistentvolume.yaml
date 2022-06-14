@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: elk
+  name: elasticsearch-pv
+  labels:
+    name: elasticsearch
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  claimRef:
+    namespace: ocean
+    name: elasticsearch-persistent-storage-elasticsearch-node-0
+  persistentVolumeReclaimPolicy: Delete
+  hostPath:
+    path: /data/es
+    type: DirectoryOrCreate

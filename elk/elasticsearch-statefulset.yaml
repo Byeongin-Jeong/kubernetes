@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: elk
+  name: elasticsearch-node
+  labels:
+    app: elasticsearch
+    #role: data
+spec:
+  serviceName: "elasticsearch"
+  selector:
+    matchLabels:
+      app: elasticsearch
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        #image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+        image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.8.23
+        env:
+        - name: CLUSTER_NAME
+          value: ocean
+        #- name: discovery.seed_hosts
+        #  value: "elasticsearch"
+        - name: discovery.type
+          value: single-node
+        - name: "ES_JAVA_OPTS"
+          value: "-Xms300m -Xmx300m"
+        ports:
+        - name: rest
+          containerPort: 9200
+        - name: transport
+          containerPort: 9300
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          readOnly: true
+          subPath: elasticsearch.yml
+        - name: elasticsearch-persistent-storage
+          mountPath: /usr/share/elasticsearch/data
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: elasticsearch-persistent-storage
+          mountPath: /usr/share/elasticsearch/data
+      volumes:
+      - name: config
+        configMap:
+          name: elasticsearch-config
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-persistent-storage
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "gp2"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
