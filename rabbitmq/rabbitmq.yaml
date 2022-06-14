@@ -1,0 +1,75 @@
+# Create StatefulSet and Pod
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: default
+  name: rabbitmq
+spec:
+  replicas: 1
+  serviceName: rabbitmq
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: "rabbit"               # user id
+        - name: RABBITMQ_DEFAULT_PASS
+          value: "rabbit"               # user pwd
+        #- name: RABBITMQ_ERLANG_COOKIE
+        #  value: "1WqgH8N2v1qDBDZDbNy8Bg9IkPWLEpu79m6q+0t36lQ="
+        volumeMounts:
+        - mountPath: /var/lib/rabbitmq
+          name: rabbitmq-data
+      volumes:
+        - name: rabbitmq-data
+          hostPath:
+            path: /data/rabbitmq
+            type: DirectoryOrCreate
+---
+# Create Service
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: rabbitmq-management
+  labels:
+    app: rabbitmq
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 15672
+    name: http
+    targetPort: 15672
+  externalIPs:
+    - 192.168.10.1 # your IP
+  type: LoadBalancer
+---
+# Create Service
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: rabbitmq
+  labels:
+    app: rabbitmq
+spec:
+  ports:
+  - port: 5672
+    name: amqp
+    targetPort: 5672
+  - port: 4369
+    name: epmd
+  - port: 25672
+    name: rabbitmq-dist
+  selector:
+    app: rabbitmq
+  type: ClusterIP
