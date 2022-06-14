@@ -20,7 +20,7 @@ spec:
   accessModes:
   - ReadWriteOnce
   claimRef:
-    namespace: ocean
+    namespace: elk
     name: elasticsearch-persistent-storage-elasticsearch-node-0
   persistentVolumeReclaimPolicy: Delete
   hostPath:
