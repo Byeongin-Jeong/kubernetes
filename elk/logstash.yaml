@@ -1,3 +1,4 @@
+# Create Configmap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -37,6 +38,7 @@ data:
       }      
     }
 ---
+# Create Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -83,6 +85,7 @@ spec:
           - key: logstash.conf
             path: logstash.conf
 ---
+# Create Service
 apiVersion: v1
 kind: Service
 metadata:
