@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: elk
+  name: logstash-configmap
+  labels:
+    task: logging
+    k8s-app: logstash
+data:
+  logstash.yml: |
+    http.host: "127.0.0.0"
+    path.config: /usr/share/logstash/pipeline
+  logstash.conf: 
+    input 
+    {
+      tcp 
+      {
+        port => 5000
+      }
+    }
+    filter 
+    {
+      json 
+      {
+        source => "message"
+        remove_field => ["@version","beat","count","fields","input_type","offset","source","host","tags","port","message"]
+      }
+    }
+    output
+    {
+      elasticsearch
+      {
+        hosts => ["elasticsearch:9200"]
+        manage_template => false
+        index => "my_index"
+        document_type => "doc"
+      }      
+    }

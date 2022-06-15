@@ -56,10 +56,15 @@ spec:
           mountPath: /usr/share/kibana/config/kibana.yml
           readOnly: true
           subPath: kibana.yml
+        - name: tz-seoul
+          mountPath: /etc/localtime
       volumes:
       - name: config
         configMap:
           name: kibana-config
+      - name: tz-seoul
+        hostPath:
+          path: /usr/share/zoneinfo/Asia/Seoul
 ---
 # Create Service
 apiVersion: v1
@@ -71,13 +76,13 @@ metadata:
     app: kibana
 spec:
   ports:
-  - nodePort: 30930
-    port: 33000
+  - port: 33000
     name: view
     targetPort: 5601
-  type: NodePort
+    #nodePort: 30930
+  #type: NodePort
   #type: LoadBalancer
-  #externalIPs:
-  #- 192.168.1.10
+  externalIPs:
+  - 192.168.1.10
   selector:
     app: kibana

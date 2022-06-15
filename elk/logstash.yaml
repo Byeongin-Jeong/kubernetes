@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: elk
+  name: logstash-configmap
+  labels:
+    task: logging
+    k8s-app: logstash
+data:
+  logstash.yml: |
+    http.host: "127.0.0.0"
+    path.config: /usr/share/logstash/pipeline
+  logstash.conf: 
+    input 
+    {
+      tcp 
+      {
+        port => 5000
+      }
+    }
+    filter 
+    {
+      json 
+      {
+        source => "message"
+        remove_field => ["@version","beat","count","fields","input_type","offset","source","host","tags","port","message"]
+      }
+    }
+    output
+    {
+      elasticsearch
+      {
+        hosts => ["elasticsearch:9200"]
+        manage_template => false
+        index => "my_index"
+        document_type => "doc"
+      }      
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: elk
+  name: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash-oss:6.8.23
+        ports:
+        - name: logstash-tcp
+          containerPort: 5000
+        imagePullPolicy: IfNotPresent, # Always, Never
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/logstash/config
+        - name: logstash-pipeline-volume
+          mountPath: /usr/share/logstash/pipeline
+        - name: tz-seoul
+          mountPath: /etc/localtime
+      volumes:
+      - name: tz-seoul
+        hostPath:
+          path: /usr/share/zoneinfo/Asia/Seoul
+      - name: config-volume
+        configMap:
+          name: logstash-configmap
+          items:
+          - key: logstash.yml
+            path: logstash.yml
+      - name: logstash-pipeline-volume
+        configMap:
+          name: logstash-configmap
+          items:
+          - key: logstash.conf
+            path: logstash.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: elk
+  name: logstash
+  labels:
+    app: logstash
+spec:
+  clusterIP: None
+  ports:
+  - name: logstash-tcp
+    port: 5000
+  selector:
+    app: logstash

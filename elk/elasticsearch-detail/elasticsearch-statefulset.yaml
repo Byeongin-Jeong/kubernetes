@@ -24,7 +24,7 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: CLUSTER_NAME
-          value: ocean
+          value: elk-cluster
         #- name: discovery.seed_hosts
         #  value: "elasticsearch"
         - name: discovery.type
@@ -43,6 +43,8 @@ spec:
           subPath: elasticsearch.yml
         - name: elasticsearch-persistent-storage
           mountPath: /usr/share/elasticsearch/data
+        - name: tz-seoul
+          mountPath: /etc/localtime
       initContainers:
       - name: fix-permissions
         image: busybox
@@ -56,6 +58,9 @@ spec:
       - name: config
         configMap:
           name: elasticsearch-config
+      - name: tz-seoul
+        hostPath:
+          path: /usr/share/zoneinfo/Asia/Seoul
   volumeClaimTemplates:
   - metadata:
       name: elasticsearch-persistent-storage

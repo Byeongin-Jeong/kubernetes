@@ -38,7 +38,12 @@ spec:
           mountPath: /usr/share/kibana/config/kibana.yml
           readOnly: true
           subPath: kibana.yml
+        - name: tz-seoul
+          mountPath: /etc/localtime
       volumes:
       - name: config
         configMap:
           name: kibana-config
+      - name: tz-seoul
+        hostPath:
+          path: /usr/share/zoneinfo/Asia/Seoul

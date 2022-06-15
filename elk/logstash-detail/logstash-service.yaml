@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: elk
+  name: logstash
+  labels:
+    app: logstash
+spec:
+  clusterIP: None
+  ports:
+  - name: logstash-tcp
+    port: 5000
+  selector:
+    app: logstash
